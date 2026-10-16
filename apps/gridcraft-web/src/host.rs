@@ -39,7 +39,8 @@ pub struct Bridge {
     reported: Rc<Cell<Option<bool>>>,
     /// Commands the parent sent since the last frame: (id, params JSON string).
     commands: Rc<RefCell<Vec<(String, String)>>>,
-    /// The title stem of the workbook the host opened: docClosed fires once no document
+    /// The workbook the host opened, by the exact name it was opened as
+    /// (the app titles documents with the full file name): docClosed fires once no document
     /// carries it (the app itself always keeps a blank Book around otherwise).
     host_doc: Rc<RefCell<Option<String>>>,
 }
@@ -64,13 +65,10 @@ impl Bridge {
         })
     }
 
-    /// Remember the workbook the host opened (its name stem), to notice it closing.
+    /// Remember the workbook the host opened (the app titles documents with the full file
+    /// name), to notice it closing later.
     pub fn set_host_doc(&self, name: &str) {
-        let stem = std::path::Path::new(name)
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| name.to_string());
-        *self.host_doc.borrow_mut() = Some(stem);
+        *self.host_doc.borrow_mut() = Some(name.to_string());
     }
 
     /// Send saved and exported files to the parent instead of downloading them, and hear files
@@ -124,12 +122,13 @@ impl Bridge {
             self.reported.set(Some(dirty));
         }
         // The host's workbook closed (File › Close): the app replaces it with a blank Book, so
-        // match on the host-opened title and report docClosed once.
-        let host_stem = self.host_doc.borrow().clone();
-        if let Some(stem) = host_stem
+        // match on the host-opened name (documents are titled with the full file name) and
+        // report docClosed once.
+        let host_name = self.host_doc.borrow().clone();
+        if let Some(name) = host_name
             && !app.session.documents().iter().any(|d| {
-                d.title == stem
-                    || d.path.as_deref().is_some_and(|p| std::path::Path::new(p).file_stem().map(|f| f.to_string_lossy().to_string()) == Some(stem.clone()))
+                d.title == name
+                    || d.path.as_deref().is_some_and(|p| std::path::Path::new(p).file_name().map(|f| f.to_string_lossy().to_string()) == Some(name.clone()))
             })
         {
             *self.host_doc.borrow_mut() = None;
@@ -169,11 +168,7 @@ impl Bridge {
                     let name = string(&data, "name").filter(|n| !n.trim().is_empty()).unwrap_or_else(|| "Book.xlsx".to_string());
                     let Some(bytes) = bytes(&data) else { return };
                     // Remember it to notice the closing later.
-                    let stem = std::path::Path::new(&name)
-                        .file_stem()
-                        .map(|s| s.to_string_lossy().to_string())
-                        .unwrap_or_else(|| name.clone());
-                    *host_doc.borrow_mut() = Some(stem);
+                    *host_doc.borrow_mut() = Some(name.clone());
                     inbox.lock().unwrap_or_else(|e| e.into_inner()).push((name, bytes));
                     ctx.request_repaint();
                 }

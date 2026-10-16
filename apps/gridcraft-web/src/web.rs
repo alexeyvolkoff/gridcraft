@@ -112,6 +112,16 @@ impl eframe::App for WebShell {
                 }
             });
         }
+        // Commands the host page sent (`gridcraft:cmd`): run them like ribbon buttons.
+        if let Some(bridge) = &self.bridge {
+            for (id, params) in bridge.take_commands() {
+                let parsed: serde_json::Value = serde_json::from_str(&params).unwrap_or(serde_json::Value::Null);
+                match self.app.run(&id, parsed) {
+                    Ok(v) => bridge.post_response(true, &v.to_string()),
+                    Err(e) => bridge.post_response(false, &e),
+                }
+            }
+        }
         self.app.logic(ctx);
     }
 

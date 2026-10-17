@@ -74,6 +74,13 @@ pub fn title_bar(app: &mut SheetApp, ui: &mut Ui) {
             {
                 app.run_or_alert("file.save", json!({}));
             }
+            // File › Close next to Save (a host embedding GridCraft reports the closing back):
+            // `file.close` asks about unsaved changes first, like Ctrl+S does on the desktop.
+            if icon_button(ui, Icon::Close, t.text_dim, "Close", vec2(26.0, ch)).clicked()
+                && app.commit_edit(0, 0, false, false)
+            {
+                app.run_or_alert("file.close", json!({}));
+            }
             let can_undo = app.session.active().is_some_and(|d| !d.undo.is_empty());
             let can_redo = app.session.active().is_some_and(|d| !d.redo.is_empty());
             if icon_button(ui, Icon::Undo, if can_undo { t.text_dim } else { t.text_disabled }, "Undo (⌘Z)", vec2(26.0, ch)).clicked() && can_undo {

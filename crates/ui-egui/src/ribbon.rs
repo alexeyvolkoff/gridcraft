@@ -76,9 +76,7 @@ pub fn title_bar(app: &mut SheetApp, ui: &mut Ui) {
             }
             // File › Close next to Save (a host embedding GridCraft reports the closing back):
             // `file.close` asks about unsaved changes first, like Ctrl+S does on the desktop.
-            if icon_button(ui, Icon::Close, t.text_dim, "Close", vec2(26.0, ch)).clicked()
-                && app.commit_edit(0, 0, false, false)
-            {
+            if icon_button(ui, Icon::Close, t.text_dim, "Close", vec2(26.0, ch)).clicked() && app.commit_edit(0, 0, false, false) {
                 app.run_or_alert("file.close", json!({}));
             }
             // The commands' own availability: there must be a step, and no undo group may be open on
